@@ -1,0 +1,27 @@
+--http://bbs.csdn.net/topics/380199283
+
+with t
+as(
+SELECT o.name ,
+SUM (p.reserved_page_count*8/1024) as reserved_size_MB,
+SUM (p.used_page_count*8/1024) as used_size_MB,
+SUM (
+    CASE
+    WHEN (p.index_id < 2) THEN (p.in_row_data_page_count + p.lob_used_page_count 
+        + p.row_overflow_used_page_count)
+    ELSE p.lob_used_page_count + p.row_overflow_used_page_count
+    END
+)*8/1024 as Data_size_MB,
+SUM (
+    CASE
+    WHEN (p.index_id < 2) THEN row_count
+    ELSE 0
+    END
+) as rowCounts
+FROM sys.dm_db_partition_stats p 
+inner join sys.objects o on p.object_id = o.object_id
+group by o.name
+)
+select name,reserved_size_MB,used_size_MB,(used_size_MB-Data_size_MB) as Index_size_MB
+,rowCounts from t order by reserved_size_MB desc
+
